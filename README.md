@@ -6,7 +6,7 @@ Because of the recursion this program is insanly slow, but as it's more of a hel
 ## Depends on rust
 The project is written in rust and as such a rust environment is needed. By installing cargo and running 
 ```
-    cargo run
+cargo run
 ```
 dependencies should be installed automatically and the project should run.
 
