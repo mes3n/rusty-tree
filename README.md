@@ -1,7 +1,7 @@
 # Tree Generation in Rust
 This project is uses a recursive pattern where each branch is a tree in itself, to control this recursion a depth level can be set. Leaves are also genereted based on the current depth of the function.
 
-Because of the recursion this program is insanly slow, but as it's more of a hello rust program no thought has been put into performance.
+Because of the recursion this program is insanly slow, but as it's more of a hello rust program no thought has been or will be put into performance.
 
 ## Depends on rust
 The project is written in rust and as such a rust environment is needed. By installing cargo and running 
