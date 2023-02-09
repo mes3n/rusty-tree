@@ -43,6 +43,26 @@ impl ops::Mul<f32> for Vec2 {
     }
 }
 
+struct Leaf {
+    center: Vec2,
+    radius: f32,
+}
+impl Leaf {
+    fn shade (&self, pos: Vec2) -> u8 {
+        
+        let d = self.center.distance(pos);
+
+        if d > self.radius + 2.0 {
+            return 0;
+        } else if d < self.radius {
+            return 255;
+        }
+        else {
+            let x = (d - self.radius) / 2.0;
+            return 255 - (255.0 * x * x * (3.0 - 2.0 * x)) as u8 
+        }
+    }
+}
 
 struct Tree {
     base: Vec2,
@@ -99,26 +119,36 @@ impl Tree {
         return (d, br1);
     }
 
-    fn create_branches (&mut self, depth: u8) {
+    fn create_branches (&mut self, leaves: &mut Vec<Leaf>, depth: u8) {
         if depth <= 0 {
             return
         }
 
-        for i in 0..2 {
+        let n = rand::random::<u32>() % 1 + 2;
+        let branch_angle = PI * 0.15 * n as f32 * (rand::random::<f32>() * 0.5 + 0.75);
+        for i in 0..n {
             let base = self.top;
-            // let theta: f32 = PI  / 4.0; // * (1.0 - 0.5 * rand::random::<f32>());
-            // let length = self.length.powf(0.5) * 10.0;
-            // let top = base + Vec2 { x: theta.cos() * length, y: theta.sin() * length };
+
+            let theta: f32 = ((i as f32 / (n - 1) as f32) * branch_angle) - (branch_angle * 0.5);
+
             let top = base + ((self.top - self.base) * 0.7).rotate(
-                -(PI * 0.2) + (i as f32 * PI * 0.4) * (rand::random::<f32>() * 0.5 + 0.75));  //  * (rand::random::<f32>() * 0.5 + 0.75)
+                theta * (rand::random::<f32>() * 0.5 + 0.75)
+            );  //  * (rand::random::<f32>() * 0.5 + 0.75)
             let length = base.distance(top);
+
+            if depth <= 2 {
+                leaves.push(Leaf {
+                    center: top,
+                    radius: rand::random::<f32>() * 3.0 + 2.0
+                })
+            }
 
             let mut branch = Tree {
                 base, top, length,
                 base_width: self.top_width, top_width: self.top_width * 0.6,
                 branches: vec![]
             };
-            branch.create_branches(depth - 1);
+            branch.create_branches(leaves, depth - 1);
             self.branches.push(branch);
         }
     }
@@ -128,15 +158,19 @@ const DIMS: Vec2 = Vec2 {x: 512.0, y: 512.0};
 const CENTER: Vec2 = Vec2 {x: DIMS.x * 0.5, y: DIMS.y * 0.5};
 
 
-fn get_color (pos: Vec2, tree: &Tree) -> image::Rgba<u8> {
+fn get_color (pos: Vec2, tree: &Tree, leaves: &Vec<Leaf>) -> image::Rgba<u8> {
 
     let max_radius = DIMS.x as f32 * 0.6;
     let pos_radius = CENTER.distance(pos);
 
     let scale: u8 = 255 - (((pos_radius / max_radius) as f32 * 255.0) as u8).clamp(0, 255); 
-    let mut color = image::Rgba([48 - scale.clamp(0, 32), (scale / 2) + (0 - scale.clamp(0, 0)), scale, 255]);
+    // let mut color = image::Rgba([48 - scale.clamp(0, 32), (scale / 2) + (0 - scale.clamp(0, 0)), scale, 255]);
+    let mut color = image::Rgba([scale, scale, scale, 255]);
 
     color.blend(&image::Rgba([0, 0, 0, tree.shade(pos)]));
+    for leaf in leaves {
+        color.blend(&image::Rgba([255, 183, 197, leaf.shade(pos)]));
+    }
 
     return color;
 
@@ -144,19 +178,21 @@ fn get_color (pos: Vec2, tree: &Tree) -> image::Rgba<u8> {
 
 fn main() {
 
-    const BASE: Vec2  = Vec2 {x: CENTER.x, y: 450.0};
+    const BASE: Vec2  = Vec2 {x: CENTER.x, y: 467.0};
     const TOP: Vec2   = Vec2 {x: CENTER.x, y: CENTER.y + 70.0};
 
     let mut tree = Tree {
         base: BASE, top: TOP,
         length: BASE.distance(TOP),
         base_width: 10.0, top_width: 6.0,
-        branches: vec![]
+        branches: vec![],
     };
-    tree.create_branches(6);
+    let mut leaves: Vec<Leaf> = vec![];
+
+    tree.create_branches(&mut leaves, 8);
 
     let img = ImageBuffer::from_fn(DIMS.x as u32, DIMS.y as u32,
-        | x, y | {get_color(Vec2 {x: x as f32, y: y as f32}, &tree)});
-    img.save("image.png").unwrap();
+        | x, y | {get_color(Vec2 {x: x as f32, y: y as f32}, &tree, &leaves)});
+    img.save("bin/image.png").unwrap();
 
 }
